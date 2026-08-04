@@ -170,7 +170,7 @@ export default function Timer({
 
             {!isFinished && fraction > 0 && <circle cx="190" cy="190" r="150" fill="none" stroke={accentColor} strokeWidth="10" strokeLinecap="butt" strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`} strokeDashoffset={arcOffset} transform="rotate(-90 190 190)" style={arcStyle} />}
             {/* Fake round cap at the arc leading end only */}
-            {!isFinished && fraction > 0 && <circle cx={capCx} cy={capCy} r="5" fill={accentColor} />}
+            {/* {!isFinished && fraction > 0 && <circle cx={capCx} cy={capCy} r="5" fill={accentColor} />} */}
 
             {/* Invisible wide ring — drag target */}
             <circle cx="190" cy="190" r="150" fill="none" stroke="transparent" strokeWidth="70" onPointerDown={onDialPointerDown} style={{ cursor: dialCursor }} />
