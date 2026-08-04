@@ -44,7 +44,7 @@ export default function Timer({
   maxMinutes = 60,
   tickSoundEnabled = true,
 }) {
-  const [setMinutes, setSetMinutes] = useState(10);
+  const [setupSecs, setSetupSecs] = useState(60);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -54,6 +54,7 @@ export default function Timer({
   const [tickSoundOn, setTickSoundOn] = useState(tickSoundEnabled);
   const [pulseTick, setPulseTick] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isCenterDragging, setIsCenterDragging] = useState(false);
   const [timeAnimation, setTimeAnimation] = useState('slide');
   const [alarmPulse, setAlarmPulse] = useState(0);
   const [finishedRef, animateFinished] = useAnimate();
@@ -73,10 +74,11 @@ export default function Timer({
   const countRef = useRef(null);
   const alarmRef = useRef(null);
   const draggingRef = useRef(false);
+  const centerDraggedRef = useRef(false);
 
   // Refs used inside interval/event closures — always reflect latest values
   const remainingRef = useRef(0);
-  const setMinutesRef = useRef(setMinutes);
+  const setupSecsRef = useRef(60);
   const soundOnRef = useRef(soundOn);
   const tickSoundOnRef = useRef(tickSoundOn);
 
@@ -170,9 +172,9 @@ export default function Timer({
   }
 
   function start() {
-    if (setMinutes <= 0) return;
+    if (setupSecs <= 0) return;
     playThunk();
-    const secs = setMinutes * 60;
+    const secs = setupSecs;
     remainingRef.current = secs;
     setRemainingSeconds(secs);
     setIsRunning(true);
@@ -237,10 +239,10 @@ export default function Timer({
     const ang = angleFromPointer(e);
     let minutes = Math.round((ang / 360) * maxMinutes);
     minutes = Math.max(0, Math.min(maxMinutes, minutes));
-    if (minutes !== setMinutesRef.current) {
-      setMinutesRef.current = minutes;
+    if (minutes !== setupSecsRef.current / 60) {
+      setupSecsRef.current = minutes * 60;
       playClick();
-      setSetMinutes(minutes);
+      setSetupSecs(minutes * 60);
     }
   }
 
@@ -263,6 +265,7 @@ export default function Timer({
 
   function handleCenterClick(e) {
     e.stopPropagation();
+    if (centerDraggedRef.current) { centerDraggedRef.current = false; return; }
     setPulseTick((n) => n + 1);
     if (isFinished) reset();
     else if (isRunning) pause();
@@ -272,8 +275,37 @@ export default function Timer({
 
   function selectPreset(minutes) {
     playClick();
-    setMinutesRef.current = minutes;
-    setSetMinutes(minutes);
+    setupSecsRef.current = minutes * 60;
+    setSetupSecs(minutes * 60);
+  }
+
+  // 8px of vertical drag per 10-second step
+  const DRAG_PX_PER_STEP = 8;
+
+  function onCenterPointerDown(e) {
+    e.stopPropagation();
+    if (!isIdle) return;
+    setIsCenterDragging(true);
+    centerDraggedRef.current = false;
+    let accum = 0;
+    let totalMoved = 0;
+    let prevY = e.clientY;
+    const move = (ev) => {
+      const dy = ev.clientY - prevY;
+      prevY = ev.clientY;
+      totalMoved += Math.abs(dy);
+      if (totalMoved > 4) centerDraggedRef.current = true;
+      accum += dy;
+      const steps = Math.trunc(accum / DRAG_PX_PER_STEP);
+      if (steps !== 0) {
+        accum -= steps * DRAG_PX_PER_STEP;
+        const next = Math.max(0, Math.min(maxMinutes * 60, setupSecsRef.current - steps * 10));
+        if (next !== setupSecsRef.current) { playClick(); setupSecsRef.current = next; setSetupSecs(next); }
+      }
+    };
+    const up = () => { setIsCenterDragging(false); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }
 
   function stopProp(e) { e.stopPropagation(); }
@@ -298,7 +330,7 @@ export default function Timer({
   let remaining;
   if (isRunning || isPaused) remaining = remainingSeconds;
   else if (isFinished) remaining = 0;
-  else remaining = setMinutes * 60;
+  else remaining = setupSecs;
   const fraction = maxMinutes > 0 ? remaining / (maxMinutes * 60) : 0;
   const arcOffset = CIRCUMFERENCE * (1 - fraction);
   const angleDeg = fraction * 360;
@@ -320,16 +352,16 @@ export default function Timer({
   else if (isPaused) hintText = 'PRESS CENTER TO RESUME';
   else if (isFinished) hintText = 'PRESS CENTER OR RESET TO CLEAR';
 
-  const displayTime = isFinished ? '00:00' : fmt(isRunning || isPaused ? remainingSeconds : setMinutes * 60);
+  const displayTime = isFinished ? '00:00' : fmt(isRunning || isPaused ? remainingSeconds : setupSecs);
 
   const presets = [5, 10, 15, 25, 45, 60]
     .filter((m) => m <= maxMinutes)
     .map((m) => ({
       label: `${m}M`,
       select: () => selectPreset(m),
-      bg: setMinutes === m ? accentColor : '#1c1c1f',
-      color: setMinutes === m ? '#161618' : '#9d9aa4',
-      border: setMinutes === m ? accentColor : '#33323a',
+      bg: setupSecs === m * 60 ? accentColor : '#1c1c1f',
+      color: setupSecs === m * 60 ? '#161618' : '#9d9aa4',
+      border: setupSecs === m * 60 ? accentColor : '#33323a',
     }));
 
   const arcStyle = { transition: 'stroke-dashoffset .3s linear' };
@@ -390,7 +422,7 @@ export default function Timer({
             </g>
 
             {/* Center button */}
-            <circle cx="190" cy="190" r="106" fill="#1a1a1d" stroke="#2c2b31" strokeWidth="1" onClick={handleCenterClick} onPointerDown={stopProp} style={{ cursor: 'pointer', ...pulseStyle }} />
+            <circle cx="190" cy="190" r="106" fill="#1a1a1d" stroke="#2c2b31" strokeWidth="1" onClick={handleCenterClick} onPointerDown={onCenterPointerDown} style={{ cursor: isCenterDragging ? 'ns-resize' : 'pointer', ...pulseStyle }} />
           </svg>
 
           {/* Time overlay — time centered, status absolutely below */}
