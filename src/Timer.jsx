@@ -40,11 +40,12 @@ const TIME_ANIM_VARIANTS = {
 const CIRCUMFERENCE = 2 * Math.PI * 150;
 
 export default function Timer({
-  accentColor = '#8e8ba8',
+  accentColor: accentColorProp = '#8e8ba8',
   maxMinutes = 60,
   tickSoundEnabled = true,
 }) {
   const [setupSecs, setSetupSecs] = useState(60);
+  const [accentColor, setAccentColor] = useState(accentColorProp);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -375,6 +376,7 @@ export default function Timer({
     : {};
 
   const TIME_ANIMS = ['none', 'fade', 'slide', 'flip'];
+  const ACCENT_COLORS = ['#8e8ba8', '#d94f2b', '#ff5a1f', '#7fa88e', '#4ecdc4'];
 
   const knobBase = { position: 'absolute', top: '2px', width: '18px', height: '18px', borderRadius: '50%', background: '#f3f1f6', transition: 'left .15s ease' };
   const soundKnobStyle = { ...knobBase, left: soundOn ? '20px' : '2px' };
@@ -393,9 +395,8 @@ export default function Timer({
             <div style={{ fontSize: '11px', letterSpacing: '0.1em', color: '#54525a' }}>ANALOG&nbsp;COUNTDOWN&nbsp;UNIT</div>
           </div>
           <button onClick={toggleSettings} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Settings">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <circle cx="12" cy="12" r="3.2" />
-              <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
             </svg>
           </button>
         </div>
@@ -509,6 +510,14 @@ export default function Timer({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: '12px', letterSpacing: '0.06em' }}>ACCENT</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {ACCENT_COLORS.map((c) => (
+                    <button key={c} onClick={(e) => { e.stopPropagation(); setAccentColor(c); }} aria-label={c} style={{ width: '22px', height: '22px', borderRadius: '50%', background: c, border: `2px solid ${accentColor === c ? '#e9e7ee' : 'transparent'}`, cursor: 'pointer', padding: 0 }} />
+                  ))}
+                </div>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontSize: '12px', letterSpacing: '0.06em' }}>ALARM SOUND</div>
                 <button onClick={(e) => { e.stopPropagation(); setSoundOn((s) => !s); }} style={{ width: '42px', height: '24px', borderRadius: '14px', border: '1px solid #33323a', background: soundOn ? accentColor : '#232227', position: 'relative', cursor: 'pointer' }}>
