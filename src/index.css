@@ -1,0 +1,41 @@
+body {
+  margin: 0;
+  background: #131315;
+}
+
+a { color: #8e8ba8; }
+a:hover { color: #b3aec9; }
+
+@keyframes finishPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 1; }
+  47% { opacity: 0.3; }
+  49% { opacity: 1; }
+  92% { opacity: 1; }
+  94% { opacity: 0.4; }
+  96% { opacity: 1; }
+}
+
+/* Two names, same keyframes — alternating names forces re-trigger on each click */
+@keyframes centerPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes centerPulse2 {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes centerFlash {
+  0% { background: rgba(255, 255, 255, 0.35); transform: scale(1.02); }
+  50% { background: rgba(255, 255, 255, 0.15); }
+  100% { background: rgba(255, 255, 255, 0); transform: scale(1); }
+}
