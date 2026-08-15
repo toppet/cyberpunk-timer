@@ -193,19 +193,25 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     const rect = svgRef.current.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
+    // Calculate angle with 0° at top, increasing clockwise
     let ang = Math.atan2(e.clientX - cx, -(e.clientY - cy)) * (180 / Math.PI);
     if (ang < 0) ang += 360;
     return ang;
   }
 
-  function updateFromPointer(e) {
-    const ang = angleFromPointer(e);
-    let minutes = Math.round((ang / 360) * maxMinutes);
-    minutes = Math.max(0, Math.min(maxMinutes, minutes));
-    if (minutes !== setupSecsRef.current / 60) {
-      setupSecsRef.current = minutes * 60;
+  /**
+   * Standard circular slider approach: absolute angle-to-value mapping.
+   * The pointer position directly determines the value - no delta tracking needed.
+   * This eliminates desync issues that occur with relative/delta-based approaches.
+   */
+  function setTimeFromAngle(ang) {
+    // Direct angle-to-time mapping: 0° = 0 min, 90° = 15 min, 180° = 30 min, etc.
+    const minutes = Math.round((ang / 360) * maxMinutes);
+    const clampedMinutes = Math.max(0, Math.min(maxMinutes, minutes));
+    if (clampedMinutes !== setupSecsRef.current / 60) {
+      setupSecsRef.current = clampedMinutes * 60;
       playClick();
-      setSetupSecs(minutes * 60);
+      setSetupSecs(clampedMinutes * 60);
     }
   }
 
@@ -214,8 +220,13 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     e.preventDefault();
     draggingRef.current = true;
     setIsDragging(true);
-    updateFromPointer(e);
-    const move = (ev) => draggingRef.current && updateFromPointer(ev);
+    // Set time directly from pointer position (absolute mapping)
+    setTimeFromAngle(angleFromPointer(e));
+    const move = (ev) => {
+      if (draggingRef.current) {
+        setTimeFromAngle(angleFromPointer(ev));
+      }
+    };
     const up = () => {
       draggingRef.current = false;
       setIsDragging(false);
