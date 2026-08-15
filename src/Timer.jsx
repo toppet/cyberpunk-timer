@@ -279,13 +279,15 @@ export default function Timer({
         )}
 
         {/* Adjust row */}
-        {showAdjustRow && (
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-            {[[-60, '-1M'], [-10, '-10S'], [10, '+10S'], [60, '+1M']].map(([delta, label]) => (
-              <button key={label} onClick={() => adjustTime(delta)} style={{ padding: '8px 14px', borderRadius: '20px', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', cursor: 'pointer' }}>{label}</button>
-            ))}
-          </div>
-        )}
+        <div style={{ minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {showAdjustRow && (
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              {[[-60, '-1M'], [-10, '-10S'], [10, '+10S'], [60, '+1M']].map(([delta, label]) => (
+                <button key={label} onClick={() => adjustTime(delta)} style={{ padding: '8px 14px', borderRadius: '20px', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', cursor: 'pointer' }}>{label}</button>
+              ))}
+            </div>
+          )}
+        </div>
 
       </div>
 

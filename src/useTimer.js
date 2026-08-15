@@ -163,6 +163,13 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     setRemainingSeconds(0);
   }
 
+  function setRemainingTime(seconds) {
+    remainingRef.current = seconds;
+    setRemainingSeconds(seconds);
+    startedAtRef.current = Date.now();
+    secsAtStartRef.current = seconds;
+  }
+
   function adjustTime(deltaSeconds) {
     if (!isRunning && !isPaused) return;
     playClick();
@@ -170,14 +177,9 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     next = Math.max(0, Math.min(maxMinutes * 60, next));
     if (next <= 0) {
       if (isRunning) { clearInterval(countRef.current); finish(); }
-      remainingRef.current = 0;
-      setRemainingSeconds(0);
+      setRemainingTime(0);
     } else {
-      remainingRef.current = next;
-      setRemainingSeconds(next);
-      // re-anchor wall clock so background timing stays correct after adjustment
-      startedAtRef.current = Date.now();
-      secsAtStartRef.current = next;
+      setRemainingTime(next);
     }
   }
 
@@ -238,9 +240,8 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
         
         if (targetMinutes !== lastSnappedMinutes) {
           const snappedSeconds = targetMinutes * 60;
-          remainingRef.current = snappedSeconds;
           playClick();
-          setRemainingSeconds(snappedSeconds);
+          setRemainingTime(snappedSeconds);
           lastSnappedMinutes = targetMinutes;
         }
       };
@@ -298,6 +299,8 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     let accum = 0;
     let totalMoved = 0;
     let prevY = e.clientY;
+    const pausedBaseMinutes = isPaused ? Math.round(remainingRef.current / 60) : 0;
+    let pausedSteps = 0;
     const move = (ev) => {
       const dy = ev.clientY - prevY;
       prevY = ev.clientY;
@@ -309,13 +312,12 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
         accum -= steps * DRAG_PX_PER_STEP;
         if (isPaused) {
           // When paused: adjust remaining time, snap to minutes
-          const currentMinutes = Math.round(remainingRef.current / 60);
-          const nextMinutes = Math.max(0, Math.min(maxMinutes, currentMinutes - steps));
+          pausedSteps += steps;
+          const nextMinutes = Math.max(0, Math.min(maxMinutes, pausedBaseMinutes - pausedSteps));
           const nextSeconds = nextMinutes * 60;
           if (nextSeconds !== remainingRef.current) {
             playClick();
-            remainingRef.current = nextSeconds;
-            setRemainingSeconds(nextSeconds);
+            setRemainingTime(nextSeconds);
           }
         } else {
           // When idle: adjust setup time
