@@ -173,11 +173,14 @@ export default function Timer({
             <div style={{ fontSize: '13px', letterSpacing: '0.12em', color: '#8a8890' }}>CHRONO&nbsp;/&nbsp;001</div>
             <div style={{ fontSize: '11px', letterSpacing: '0.1em', color: '#54525a' }}>ANALOG&nbsp;COUNTDOWN&nbsp;UNIT</div>
           </div>
-          <button onClick={toggleSettings} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Settings">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button onClick={reset} disabled={!showResetRow} style={{ width: '100px', height: '32px', borderRadius: '16px', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', cursor: showResetRow ? 'pointer' : 'default', visibility: showResetRow ? 'visible' : 'hidden' }} aria-label="Reset timer">RESET</button>
+            <button onClick={toggleSettings} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
             </svg>
-          </button>
+            </button>
+          </div>
         </div>
 
         {/* Dial */}
@@ -281,13 +284,6 @@ export default function Timer({
             {[[-60, '-1M'], [-10, '-10S'], [10, '+10S'], [60, '+1M']].map(([delta, label]) => (
               <button key={label} onClick={() => adjustTime(delta)} style={{ padding: '8px 14px', borderRadius: '20px', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', cursor: 'pointer' }}>{label}</button>
             ))}
-          </div>
-        )}
-
-        {/* Reset row */}
-        {showResetRow && (
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <button onClick={reset} style={{ padding: '9px 22px', borderRadius: '20px', border: '1px solid #33323a', background: '#1c1c1f', color: '#9d9aa4', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', letterSpacing: '0.1em', cursor: 'pointer' }}>RESET</button>
           </div>
         )}
 
