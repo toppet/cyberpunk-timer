@@ -269,17 +269,15 @@ export default function Timer({
         {/* Hint text */}
         <div style={{ textAlign: 'center', fontSize: '11px', letterSpacing: '0.1em', color: '#5c5a62' }}>{hintText}</div>
 
-        {/* Preset buttons */}
-        {isIdle && (
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {presets.map((p) => (
-              <button key={p.label} onClick={p.select} style={{ padding: '8px 14px', borderRadius: '20px', border: `1px solid ${p.border}`, background: p.bg, color: p.color, fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', letterSpacing: '0.05em', cursor: 'pointer' }}>{p.label}</button>
-            ))}
-          </div>
-        )}
-
-        {/* Adjust row */}
+        {/* Action row */}
         <div style={{ minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isIdle && (
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {presets.map((p) => (
+                <button key={p.label} onClick={p.select} style={{ padding: '8px 14px', borderRadius: '20px', border: `1px solid ${p.border}`, background: p.bg, color: p.color, fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', letterSpacing: '0.05em', cursor: 'pointer' }}>{p.label}</button>
+              ))}
+            </div>
+          )}
           {showAdjustRow && (
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
               {[[-60, '-1M'], [-10, '-10S'], [10, '+10S'], [60, '+1M']].map(([delta, label]) => (
