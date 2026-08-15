@@ -58,47 +58,41 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     return audioRef.current;
   }
 
-  function playClick() {
-    if (!tickSoundOnRef.current) return;
+  function playTone({ frequency, volume = 1, decay = 0.1, delay = 0, type = 'sine', attack = 0, initialVolume = volume }) {
     const ctx = getAudio();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.value = 1200;
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.045);
+    osc.type = type;
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(initialVolume, ctx.currentTime + delay);
+    if (attack > 0) {
+      gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + delay + attack);
+    }
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + decay);
     osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.05);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + decay + 0.01);
+  }
+
+  function playClick() {
+    if (!tickSoundOnRef.current) return;
+    playTone({ frequency: 1200, volume: 0.25, decay: 0.045, type: 'square' });
   }
 
   function playThunk() {
-    const ctx = getAudio();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 220;
-    gain.gain.setValueAtTime(0.09, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.16);
+    playTone({ frequency: 220, decay: 0.15 });
+  }
+
+  function playPause() {
+    [0, 0.15].forEach((delay) => {
+      playTone({ frequency: 250, decay: 0.06, delay });
+    });
   }
 
   function playAlarmBeep() {
     if (!soundOnRef.current) return;
-    const ctx = getAudio();
     [0, 0.18].forEach((delay) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.001, ctx.currentTime + delay);
-      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + delay + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + 0.16);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.18);
+      playTone({ frequency: 880, volume: 0.5, decay: 0.16, delay, type: 'triangle', attack: 0.02, initialVolume: 0.001 });
     });
   }
 
@@ -145,7 +139,7 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
 
   function pause() {
     clearInterval(countRef.current);
-    playThunk();
+    playPause();
     setIsRunning(false);
     setIsPaused(true);
   }
@@ -216,25 +210,66 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
   }
 
   function onDialPointerDown(e) {
-    if (isRunning || isPaused || isFinished) return;
+    if (isRunning || isFinished) return;
     e.preventDefault();
     draggingRef.current = true;
     setIsDragging(true);
-    // Set time directly from pointer position (absolute mapping)
-    setTimeFromAngle(angleFromPointer(e));
-    const move = (ev) => {
-      if (draggingRef.current) {
-        setTimeFromAngle(angleFromPointer(ev));
-      }
-    };
-    const up = () => {
-      draggingRef.current = false;
-      setIsDragging(false);
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    
+    if (isPaused) {
+      // When paused: snap to minutes based on drag direction
+      const startAngle = angleFromPointer(e);
+      const startSeconds = remainingRef.current;
+      // Round to nearest minute as baseline
+      let baseMinutes = Math.round(startSeconds / 60);
+      let lastSnappedMinutes = baseMinutes;
+      
+      const move = (ev) => {
+        if (!draggingRef.current) return;
+        const currentAngle = angleFromPointer(ev);
+        let delta = currentAngle - startAngle;
+        // Normalize delta to [-180, 180]
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        
+        // Convert angle delta to minute steps (6 degrees per minute on 60-min dial)
+        const degreesPerMinute = 360 / maxMinutes;
+        const minuteSteps = Math.round(delta / degreesPerMinute);
+        const targetMinutes = Math.max(0, Math.min(maxMinutes, baseMinutes + minuteSteps));
+        
+        if (targetMinutes !== lastSnappedMinutes) {
+          const snappedSeconds = targetMinutes * 60;
+          remainingRef.current = snappedSeconds;
+          playClick();
+          setRemainingSeconds(snappedSeconds);
+          lastSnappedMinutes = targetMinutes;
+        }
+      };
+      
+      const up = () => {
+        draggingRef.current = false;
+        setIsDragging(false);
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    } else {
+      // When idle: set time directly from pointer position (absolute mapping)
+      setTimeFromAngle(angleFromPointer(e));
+      const move = (ev) => {
+        if (draggingRef.current) {
+          setTimeFromAngle(angleFromPointer(ev));
+        }
+      };
+      const up = () => {
+        draggingRef.current = false;
+        setIsDragging(false);
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    }
   }
 
   const isIdle = !isRunning && !isPaused && !isFinished;
@@ -257,7 +292,7 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
 
   function onCenterPointerDown(e) {
     e.stopPropagation();
-    if (!isIdle) return;
+    if (isRunning || isFinished) return;
     setIsCenterDragging(true);
     centerDraggedRef.current = false;
     let accum = 0;
@@ -272,8 +307,21 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
       const steps = Math.trunc(accum / DRAG_PX_PER_STEP);
       if (steps !== 0) {
         accum -= steps * DRAG_PX_PER_STEP;
-        const next = Math.max(0, Math.min(maxMinutes * 60, setupSecsRef.current - steps * 10));
-        if (next !== setupSecsRef.current) { playClick(); setupSecsRef.current = next; setSetupSecs(next); }
+        if (isPaused) {
+          // When paused: adjust remaining time, snap to minutes
+          const currentMinutes = Math.round(remainingRef.current / 60);
+          const nextMinutes = Math.max(0, Math.min(maxMinutes, currentMinutes - steps));
+          const nextSeconds = nextMinutes * 60;
+          if (nextSeconds !== remainingRef.current) {
+            playClick();
+            remainingRef.current = nextSeconds;
+            setRemainingSeconds(nextSeconds);
+          }
+        } else {
+          // When idle: adjust setup time
+          const next = Math.max(0, Math.min(maxMinutes * 60, setupSecsRef.current - steps * 10));
+          if (next !== setupSecsRef.current) { playClick(); setupSecsRef.current = next; setSetupSecs(next); }
+        }
       }
     };
     const up = () => {

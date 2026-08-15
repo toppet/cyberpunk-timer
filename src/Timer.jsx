@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTimer } from './useTimer';
 
 const TICK_COUNT = 60;
 
-const TICKS = Array.from({ length: TICK_COUNT }, (_, i) => {
+// Base tick data (without active state)
+const BASE_TICKS = Array.from({ length: TICK_COUNT }, (_, i) => {
   const isMajor = i % 5 === 0;
   return {
-    y1: 190 - 158,
-    y2: 190 - (isMajor ? 136 : 146),
+    index: i,
+    isMajor,
+    baseY1: 190 - 158,
+    baseY2: 190 - (isMajor ? 136 : 146),
     transform: `rotate(${(i / TICK_COUNT) * 360} 190 190)`,
     color: isMajor ? '#c9c6d1' : '#48464d',
     width: isMajor ? 2 : 1,
@@ -65,7 +68,7 @@ function getStateLabel(isRunning, isPaused, isFinished) {
 
 function getHintText(isRunning, isPaused, isFinished) {
   if (isRunning) return 'PRESS CENTER TO PAUSE';
-  if (isPaused) return 'PRESS CENTER TO RESUME';
+  if (isPaused) return 'DRAG RING OR CENTER TO ADJUST · PRESS CENTER TO RESUME';
   if (isFinished) return 'PRESS CENTER OR RESET TO CLEAR';
   return 'DRAG TIME OR RING TO SET · PRESS CENTER TO START';
 }
@@ -115,6 +118,21 @@ export default function Timer({
   const capCx = 190 + 150 * Math.cos(capAngleRad);
   const capCy = 190 + 150 * Math.sin(capAngleRad);
 
+  // Calculate active tick index (the tick the red marker is on)
+  const activeTickIndex = Math.round(angleDeg / 6) % TICK_COUNT;
+
+  // Generate tick data with active state for animation
+  const ticks = useMemo(() => BASE_TICKS.map((t) => {
+    const isActive = t.index === activeTickIndex && remaining > 0;
+    // Extend tick outward when active:
+    // - 5-minute markers (major): 20% increase
+    // - Minute markers (minor): 30% increase
+    const tickLength = Math.abs(t.baseY1 - t.baseY2);
+    const extensionPercent = t.isMajor ? 0.325 : 0.6;
+    const activeY1 = isActive ? t.baseY1 - tickLength * extensionPercent : t.baseY1;
+    return { ...t, y1: activeY1, y2: t.baseY2, isActive };
+  }), [activeTickIndex, remaining]);
+
   const showResetRow = isPaused || isFinished;
   const showAdjustRow = isRunning || isPaused;
   const stateLabel = getStateLabel(isRunning, isPaused, isFinished);
@@ -125,15 +143,19 @@ export default function Timer({
   const presets = buildPresets(maxMinutes, setupSecs, accentColor, selectPreset);
 
   let dialCursor = 'default';
-  if (isIdle) dialCursor = isDragging ? 'grabbing' : 'grab';
+  if (isIdle || isPaused) dialCursor = isDragging ? 'grabbing' : 'grab';
 
   const arcStyle = { transition: 'stroke-dashoffset .3s linear' };
   const pulseStyle = {
     animation: `${pulseTick % 2 === 0 ? 'centerPulse' : 'centerPulse2'} 0.35s ease-out`,
     transformOrigin: '190px 190px',
   };
-  const flashStyle = pulseTick > 0
-    ? { animation: 'centerFlash 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }
+
+  const glowStyle = pulseTick > 0
+    ? {
+        animation: `${pulseTick % 2 === 0 ? 'centerGlow' : 'centerGlow2'} 0.5s ease-out`,
+        '--glow-color': accentColor,
+      }
     : {};
 
   const soundKnobStyle = { ...KNOB_BASE, left: soundOn ? '20px' : '2px' };
@@ -164,8 +186,18 @@ export default function Timer({
             <circle cx="190" cy="190" r="165" fill="#181819" stroke="#26252a" strokeWidth="1" />
             <circle cx="190" cy="190" r="150" fill="none" stroke="#232227" strokeWidth="10" />
 
-            {TICKS.map((t) => (
-              <line key={t.transform} x1="190" y1={t.y1} x2="190" y2={t.y2} stroke={t.color} strokeWidth={t.width} transform={t.transform} />
+            {ticks.map((t) => (
+              <motion.line
+                key={t.index}
+                x1="190"
+                x2="190"
+                stroke={t.isActive ? accentColor : t.color}
+                strokeWidth={t.width}
+                transform={t.transform}
+                initial={false}
+                animate={{ y1: t.y1, y2: t.y2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              />
             ))}
 
             {!isFinished && fraction > 0 && <circle cx="190" cy="190" r="150" fill="none" stroke={accentColor} strokeWidth="10" strokeLinecap="butt" strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`} strokeDashoffset={arcOffset} transform="rotate(-90 190 190)" style={arcStyle} />}
@@ -185,8 +217,13 @@ export default function Timer({
             <circle cx="190" cy="190" r="106" fill="#1a1a1d" stroke="#2c2b31" strokeWidth="1" onClick={handleCenterClick} onPointerDown={onCenterPointerDown} style={{ cursor: isCenterDragging ? 'ns-resize' : 'pointer', ...pulseStyle }} />
           </svg>
 
+          {/* Glow overlay */}
+          {pulseTick > 0 && (
+            <div style={{ position: 'absolute', top: '50%', left: '50%', width: '55.8%', height: '55.8%', transform: 'translate(-50%, -50%)', borderRadius: '50%', pointerEvents: 'none', ...glowStyle }} />
+          )}
+
           {/* Time overlay — time centered, status absolutely below */}
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', borderRadius: '50%', perspective: '600px', ...flashStyle }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', borderRadius: '50%', perspective: '600px' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', alignItems: 'center', overflow: 'hidden', height: '58px' }}>
               <AnimatePresence mode="popLayout" initial={false}>
                 {isFinished ? (
