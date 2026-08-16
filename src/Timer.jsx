@@ -43,7 +43,7 @@ const TIME_ANIM_VARIANTS = {
 
 const CIRCUMFERENCE = 2 * Math.PI * 150;
 const TIME_ANIMS = ['none', 'fade', 'slide', 'flip'];
-const ACCENT_COLORS = ['#8e8ba8', '#d94f2b', '#ff5a1f', '#7fa88e', '#4ecdc4'];
+const ACCENT_COLORS = ['#ff003c', '#ff6c11', '#f9f002', '#4ecdc4', '#00b8ff', '#9d00ff'];
 const DIGIT_POS_KEYS = ['mm-tens', 'mm-ones', 'sep', 'ss-tens', 'ss-ones'];
 const KNOB_BASE = { position: 'absolute', top: '2px', width: '18px', height: '18px', borderRadius: '50%', background: '#f3f1f6', transition: 'left .15s ease' };
 
@@ -290,9 +290,26 @@ export default function Timer({
       </div>
 
       {/* Settings drawer */}
-      {showSettings && (
-        <button type="button" onClick={(e) => { if (e.target === e.currentTarget) closeSettingsBackdrop(); }} onKeyDown={(e) => e.key === 'Escape' && closeSettingsBackdrop()} style={{ all: 'unset', position: 'fixed', inset: 0, background: 'rgba(8,8,9,0.6)', display: 'flex', justifyContent: 'flex-end', zIndex: 20, cursor: 'default' }}>
-          <dialog open style={{ width: '280px', maxWidth: '85vw', height: '100%', background: '#17171a', borderLeft: '1px solid #2a292f', borderTop: 'none', borderRight: 'none', borderBottom: 'none', padding: '24px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '22px', color: '#e9e7ee', margin: 0, position: 'relative' }}>
+      <AnimatePresence>
+        {showSettings && (
+        <motion.button
+          type="button"
+          onClick={(e) => { if (e.target === e.currentTarget) closeSettingsBackdrop(); }}
+          onKeyDown={(e) => e.key === 'Escape' && closeSettingsBackdrop()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          style={{ all: 'unset', position: 'fixed', inset: 0, background: 'rgba(8,8,9,0.6)', display: 'flex', justifyContent: 'flex-end', zIndex: 20, cursor: 'default' }}
+        >
+          <motion.dialog
+            open
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+            style={{ width: '280px', maxWidth: '85vw', height: '100%', background: '#17171a', borderLeft: '1px solid #2a292f', borderTop: 'none', borderRight: 'none', borderBottom: 'none', padding: '24px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '22px', color: '#e9e7ee', margin: 0, position: 'relative' }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: '12px', letterSpacing: '0.12em', color: '#8a8890' }}>SETTINGS</div>
               <button onClick={toggleSettings} style={{ background: 'none', border: 'none', color: '#8a8890', fontSize: '16px', cursor: 'pointer' }}>✕</button>
@@ -333,9 +350,10 @@ export default function Timer({
             <div style={{ fontSize: '11px', letterSpacing: '0.05em', color: '#5c5a62', lineHeight: 1.6 }}>
               DRAG THE RING TO SET MINUTES. PRESS CENTER TO START / PAUSE. MAX {maxMinutes} MIN PER SESSION.
             </div>
-          </dialog>
-        </button>
-      )}
+          </motion.dialog>
+        </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
