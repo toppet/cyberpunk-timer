@@ -1,21 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAnimate } from 'motion/react';
+import { getJSONCookie, setJSONCookie } from './cookies';
 
 const DRAG_PX_PER_STEP = 8;
+const SETTINGS_COOKIE = 'cyberpunk-timer-settings';
 
 export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
+  const savedSettings = getJSONCookie(SETTINGS_COOKIE, {});
   const [setupSecs, setSetupSecs] = useState(60);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [soundOn, setSoundOn] = useState(true);
-  const [tickSoundOn, setTickSoundOn] = useState(tickSoundEnabled);
+  const [soundOn, setSoundOn] = useState(savedSettings.soundOn ?? true);
+  const [tickSoundOn, setTickSoundOn] = useState(savedSettings.tickSoundOn ?? tickSoundEnabled);
   const [pulseTick, setPulseTick] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isCenterDragging, setIsCenterDragging] = useState(false);
-  const [timeAnimation, setTimeAnimation] = useState('slide');
+  const [timeAnimation, setTimeAnimation] = useState(savedSettings.timeAnimation ?? 'slide');
   const [alarmPulse, setAlarmPulse] = useState(0);
   const [finishedRef, animateFinished] = useAnimate();
 
@@ -35,6 +38,9 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
 
   useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
   useEffect(() => { tickSoundOnRef.current = tickSoundOn; }, [tickSoundOn]);
+  useEffect(() => {
+    setJSONCookie(SETTINGS_COOKIE, { soundOn, tickSoundOn, timeAnimation });
+  }, [soundOn, tickSoundOn, timeAnimation]);
   useEffect(() => {
     if (isFinished && finishedRef.current) {
       animateFinished(finishedRef.current,
@@ -258,11 +264,31 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
     } else {
-      // When idle: set time directly from pointer position (absolute mapping)
+      // When idle: clicking sets time directly from pointer position, then drag is delta-based
+      // (absolute angle-per-move would snap backwards whenever the pointer crosses the 0°/360° seam)
       setTimeFromAngle(angleFromPointer(e));
+      const startAngle = angleFromPointer(e);
+      let baseMinutes = setupSecsRef.current / 60;
+      let lastSnappedMinutes = baseMinutes;
+
       const move = (ev) => {
-        if (draggingRef.current) {
-          setTimeFromAngle(angleFromPointer(ev));
+        if (!draggingRef.current) return;
+        const currentAngle = angleFromPointer(ev);
+        let delta = currentAngle - startAngle;
+        // Normalize delta to [-180, 180]
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+
+        const degreesPerMinute = 360 / maxMinutes;
+        const minuteSteps = Math.round(delta / degreesPerMinute);
+        const targetMinutes = Math.max(0, Math.min(maxMinutes, baseMinutes + minuteSteps));
+
+        if (targetMinutes !== lastSnappedMinutes) {
+          const snappedSeconds = targetMinutes * 60;
+          playClick();
+          setupSecsRef.current = snappedSeconds;
+          setSetupSecs(snappedSeconds);
+          lastSnappedMinutes = targetMinutes;
         }
       };
       const up = () => {

@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTimer } from './useTimer';
+import { getCookie, setCookie } from './cookies';
 
+const ACCENT_COOKIE = 'cyberpunk-timer-accent';
 const TICK_COUNT = 60;
 
 // Base tick data (without active state)
@@ -93,7 +95,9 @@ export default function Timer({
   maxMinutes = 60,
   tickSoundEnabled = true,
 }) {
-  const [accentColor, setAccentColor] = useState(accentColorProp);
+  const [accentColor, setAccentColor] = useState(() => getCookie(ACCENT_COOKIE) || accentColorProp);
+
+  useEffect(() => { setCookie(ACCENT_COOKIE, accentColor); }, [accentColor]);
 
   const {
     setupSecs, remainingSeconds,
