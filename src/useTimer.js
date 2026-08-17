@@ -218,13 +218,16 @@ export function useTimer({ maxMinutes = 60, tickSoundEnabled = true } = {}) {
     setIsDragging(true);
     
     if (isPaused) {
-      // When paused: snap to minutes based on drag direction
+      // When paused: clicking sets time directly from pointer position, like idle
       const startAngle = angleFromPointer(e);
-      const startSeconds = remainingRef.current;
-      // Round to nearest minute as baseline
-      let baseMinutes = Math.round(startSeconds / 60);
-      let lastSnappedMinutes = baseMinutes;
-      
+      const initialMinutes = Math.max(0, Math.min(maxMinutes, Math.round((startAngle / 360) * maxMinutes)));
+      let baseMinutes = initialMinutes;
+      let lastSnappedMinutes = initialMinutes;
+      if (initialMinutes * 60 !== remainingRef.current) {
+        playClick();
+        setRemainingTime(initialMinutes * 60);
+      }
+
       const move = (ev) => {
         if (!draggingRef.current) return;
         const currentAngle = angleFromPointer(ev);
